@@ -1,5 +1,5 @@
-#ifndef STORAGE_LOGGER_H_
-#define STORAGE_LOGGER_H_
+#ifndef UTIL_LOGGER_H_
+#define UTIL_LOGGER_H_
 
 #include <stdio.h>
 #include <string.h>
@@ -26,21 +26,19 @@ namespace util {
 
 enum LogLevel
 {
-    TRACE,
-    DEBUG,
-    INFO,
-    WARN,
-    ERROR,
-    FATAL,
+    TRACE = 0,
+    DEBUG = 1,
+    INFO = 2,
+    WARN = 3,
+    ERROR = 4,
+    FATAL = 5,
     NUM_LOG_LEVELS,
 };
 
 class Logger
 {
 private:
-    string log_dir_;
-    const size_t roll_size_;
-    const int check_every_n_;
+    string log_file_;
     const static int kRollPerSeconds_ = 24 * 60 * 60;
 
     int count_;
@@ -54,15 +52,15 @@ private:
     Mutex mutex_;
 
 public:
-    Logger(const string& log_dir, size_t roll_size = 100 * 1024 * 1024, bool threadsafe = true, int check_every_n = 1024);
+    Logger(const string& log_file, bool threadsafe = true);
 
     ~Logger();
 
     void Logv(const char* format, va_list ap);
     void Append(const Slice &data);
 
+    static string GetLogFileName(const string& log_file, time_t *now);
     bool RollFile();
-    static string GetLogFileName(const string& log_dir, time_t *now);
 
     static LogLevel GetLogLevel();
     static int32_t SetLogLevel(LogLevel level);
@@ -74,22 +72,22 @@ void LogFunc(Logger *info_log, const char* format, ...);
 #define Log(info_log, format, ...) LogFunc(info_log, "[%s:%s:%d]: "format, __FILE__,  __func__, __LINE__, ##__VA_ARGS__)
 
 #define LOG_TRACE(info_log, format, ...) if (util::Logger::GetLogLevel() <= TRACE) \
-    LogFunc(info_log, "[%s:%s:%d]: "format, __FILE__,  __func__, __LINE__, ##__VA_ARGS__)
+    LogFunc(info_log, "TRACE [%s:%s:%d]: "format, __FILE__,  __func__, __LINE__, ##__VA_ARGS__)
 
 #define LOG_DEBUG(info_log, format, ...) if (util::Logger::GetLogLevel() <= DEBUG) \
-    LogFunc(info_log, "[%s:%s:%d]: "format, __FILE__,  __func__, __LINE__, ##__VA_ARGS__)
+    LogFunc(info_log, "DEBUG [%s:%s:%d]: "format, __FILE__,  __func__, __LINE__, ##__VA_ARGS__)
 
 #define LOG_INFO(info_log, format, ...) if (util::Logger::GetLogLevel() <= INFO) \
-    LogFunc(info_log, "[%s:%s:%d]: "format, __FILE__,  __func__, __LINE__, ##__VA_ARGS__)
+    LogFunc(info_log, "INFO  [%s:%s:%d]: "format, __FILE__,  __func__, __LINE__, ##__VA_ARGS__)
 
 #define LOG_WARN(info_log, format, ...) if (util::Logger::GetLogLevel() <= WARN) \
-    LogFunc(info_log, "[%s:%s:%d]: "format, __FILE__,  __func__, __LINE__, ##__VA_ARGS__)
+    LogFunc(info_log, "WARN  [%s:%s:%d]: "format, __FILE__,  __func__, __LINE__, ##__VA_ARGS__)
 
 #define LOG_ERROR(info_log, format, ...) if (util::Logger::GetLogLevel() <= ERROR) \
-    LogFunc(info_log, "[%s:%s:%d]: "format, __FILE__,  __func__, __LINE__, ##__VA_ARGS__)
+    LogFunc(info_log, "ERROR [%s:%s:%d]: "format, __FILE__,  __func__, __LINE__, ##__VA_ARGS__)
 
 #define LOG_FATAL(info_log, format, ...) if (util::Logger::GetLogLevel() <= FATAL) \
-    LogFunc(info_log, "[%s:%s:%d]: "format, __FILE__,  __func__, __LINE__, ##__VA_ARGS__)
+    LogFunc(info_log, "FATAL [%s:%s:%d]: "format, __FILE__,  __func__, __LINE__, ##__VA_ARGS__)
 }
 
 

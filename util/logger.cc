@@ -1,16 +1,13 @@
 #include <stdlib.h>
 #include "logger.h"
-#include "../include/errcode.h"
 
 namespace util
 {
 
 LogLevel Logger::g_log_level = INFO;
 
-Logger::Logger(const string& log_dir, size_t roll_size, bool thread_safe, int check_every_n)
-: log_dir_(log_dir), 
-roll_size_(roll_size),
-check_every_n_(check_every_n),
+Logger::Logger(const string& log_file, bool thread_safe)
+: log_file_(log_file), 
 count_(0), 
 last_roll_(0),
 mutex_("logger::mutex")
@@ -23,42 +20,31 @@ Logger::~Logger()
 
 }
 
-bool Logger::RollFile()
-{
-    time_t now;
-
-    string filename = GetLogFileName(log_dir_, &now);
-    if (now > last_roll_)
-    {
-        last_roll_ = now;
-        file_.reset(new PosixWritableFile(filename));
-        return true;
-    }
-
-    return false;
-}
-
-string Logger::GetLogFileName(const string& log_dir, time_t *now)
+string Logger::GetLogFileName(const string& log_file, time_t *now)
 {
     char buffer[32] = {0};
-    string filename = log_dir;
+    string filename = log_file;
 
     *now = time(NULL);
     struct tm t;
     localtime_r(now, &t);
 
-    strftime(buffer, sizeof(buffer), ".%Y%m%d-%H%M%S.", &t);
+    strftime(buffer, sizeof(buffer), ".%Y-%m-%d", &t);
     
-    filename += "log";
     filename += buffer;
 
-    char pidbuffer[32] = {0};
-    snprintf(pidbuffer, sizeof pidbuffer, "%d", getpid());
-
-    filename += pidbuffer;
-    filename += ".log";
-
     return filename;
+}
+
+bool Logger::RollFile()
+{
+    time_t now;
+
+    string filename = GetLogFileName(log_file_, &now);
+
+    last_roll_ = now;
+    file_.reset(new PosixWritableFile(filename));
+    return true;
 }
 
 void Logger::Logv(const char* format, va_list ap)
@@ -148,27 +134,14 @@ void Logger::Append(const Slice & data)
     file_->Append(data);
     file_->Flush();
 
-    // check if need roll file
-    if (file_->WrittenBytes() > roll_size_)
-    {
-        RollFile();
-    }
-    else
-    {
-        ++count_;
-        if (count_ >= check_every_n_)
-        {
-            count_ = 0;
-            time_t now = ::time(NULL);
-            
-            time_t last_period = last_roll_ / kRollPerSeconds_ * kRollPerSeconds_;
-            time_t this_period = now / kRollPerSeconds_ * kRollPerSeconds_;
-            if (this_period != last_period)
-            {
-                RollFile();
-            }
-        }
-    }
+	// check every log
+	time_t now = ::time(NULL);
+	time_t last_period = last_roll_ / kRollPerSeconds_ * kRollPerSeconds_;
+	time_t this_period = now / kRollPerSeconds_ * kRollPerSeconds_;
+	if (last_period != this_period)
+	{
+		RollFile();
+	}
 
     return;
 }
