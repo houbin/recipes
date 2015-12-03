@@ -130,48 +130,6 @@ void SafeTimer::AddEventAt(UTime t, Context* callback)
     return;
 }
 
-void SafeTimer::DoEvent(Context *callback)
-{
-    LOG_DEBUG(logger_, "do event, callback is %p", callback);
-
-    map<Context*, multimap<UTime, Context *>::iterator>::iterator p = events_.find(callback);
-    if (p == events_.end())
-    {
-        LOG_WARN(logger_, "CancelEvents %p not found", callback);
-        return;
-    }
-
-    LOG_DEBUG(logger_, "CancelEvent %d.%d -> %p", p->second->first.tv_sec, p->second->first.tv_nsec, callback);
-    Context *ct = p->first;
-
-    schedule_.erase(p->second);
-    events_.erase(p);
-    
-    ct->Complete(-1);
-
-    return;
-}
-
-void SafeTimer::DoAllEvents()
-{
-    LOG_INFO(logger_, "do all events");
-
-    while (!schedule_.empty())
-    {
-        scheduled_map_t::iterator iter = schedule_.begin();
-        Context *ct = iter->second;
-        assert(ct != NULL);
-        events_.erase(ct);
-        schedule_.erase(iter);
-
-        mutex_.Unlock();
-        ct->Complete(0);
-        mutex_.Lock();
-    }
-
-    return;
-}
-
 bool SafeTimer::CancelEvent(Context *callback)
 {
     map<Context*, multimap<UTime, Context *>::iterator>::iterator p = events_.find(callback);

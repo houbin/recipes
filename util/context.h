@@ -1,5 +1,5 @@
-#ifndef STORAGE_CONTEXT_H_
-#define STORAGE_CONTEXT_H_
+#ifndef UTIL_CONTEXT_H_
+#define UTIL_CONTEXT_H_
 
 namespace util
 {

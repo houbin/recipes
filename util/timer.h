@@ -40,8 +40,6 @@ public:
     void AddEventAfter(double seconds, Context *callback);
     void AddEventAt(UTime when, Context *callback);
 
-    void DoEvent(Context *callback);
-    void DoAllEvents();
     bool CancelEvent(Context *callback);
     bool CancelAllEvents();
 };
