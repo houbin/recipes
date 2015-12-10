@@ -207,7 +207,7 @@ int main(int argc, char *argv[])
     g_logger = new Logger(log_file);
     g_logger->SetLogLevel((util::LogLevel)log_level);
 
-    //g_timer.Init();
+    g_timer.Init();
 
     #define CLIENT_PORT_START 20000
     //int *client_fds = new int[concurrency];
