@@ -110,6 +110,7 @@ void* UdpThread::Entry()
         LOG_INFO(g_logger, "g_total_recv_number %d, g_total_recv_bytes %d, g_total_send_number %d, g_total_send_bytes %d", 
             g_total_recv_number, g_total_recv_bytes, g_total_send_number, g_total_send_bytes);
         #endif
+	LOG_INFO(g_logger, "recv msg in thread %d, fd %d", id_, listen_fd_);
     }
 
     LOG_INFO(g_logger, "exit thread %d, fd %d", id_, listen_fd_);

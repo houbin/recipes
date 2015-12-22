@@ -8,6 +8,7 @@ Logger *g_logger = NULL;
 Mutex timer_mutex("TimerMutex");
 SafeTimer timer(timer_mutex);
 uint64_t last_ms = 0;
+int g_last_recv_number = 0;
 
 using namespace std;
 using namespace util;
@@ -22,18 +23,18 @@ public:
 	struct timeval now_time;
 	gettimeofday(&now_time, NULL);
 	uint64_t now_ms = now_time.tv_sec * 1000 + now_time.tv_usec /1000;
+	int now_recv_number = g_total_recv_number;
+	int now_recv_bytes = g_total_recv_bytes;
 
-	if (last_ms == 0)
-	{
-	    last_ms = now_ms;
-	}	
-	else
+	if (last_ms != 0)
 	{
             uint64_t interval_ms = now_ms - last_ms;
-	    double pps = g_total_recv_number / interval_ms * 1000;
-            printf("g_total_recv_number %d, g_total_recv_bytes %d, pps %f\n", g_total_recv_number, g_total_recv_bytes, pps);
-            last_ms = now_ms;
+	    int interval_recv_number = now_recv_number - g_last_recv_number;
+	    double pps = interval_recv_number / interval_ms * 1000;
+            printf("g_total_recv_number %d, g_total_recv_bytes %d, pps %f\n", now_recv_number, now_recv_bytes, pps);
 	}
+        last_ms = now_ms;
+	g_last_recv_number = now_recv_number;
 
         NewDumpContext();
     }
