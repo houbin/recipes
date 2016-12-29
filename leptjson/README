@@ -1,0 +1,6 @@
+1. cd ../build/
+2. cmake ../leptjson/
+3. make
+4. TDD
+   ./leptjson_test
+
