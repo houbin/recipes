@@ -184,6 +184,15 @@ void test_parse_string()
 	TEST_STRING("\" \\ / \b \f \n \r \t", "\"\\\" \\\\ \\/ \\b \\f \\n \\r \\t\"");
 }
 
+void test_parse_unicode()
+{
+	TEST_STRING("\x0", "\"\\u0000\"");
+	TEST_STRING("\x7f", "\"\\u007f\"");
+	TEST_STRING("\xE6\x88\x91", "\"\\u6211\"");
+
+	TEST_STRING("\xF0\x9D\x84\x9E", "\"\\uD834\\uDD1E\"");
+}
+
 static void test_parse()
 {
 	test_parse_null();
@@ -197,6 +206,8 @@ static void test_parse()
 
 	test_access_string();
 	test_parse_string();
+
+	test_parse_unicode();
 }
 
 int main()

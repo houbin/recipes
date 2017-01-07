@@ -4,6 +4,7 @@
 #include <string.h>
 #include <errno.h>
 #include <math.h>
+#include <assert.h>
 
 #define EXPECT(c, ch) do{assert(*c->json == (ch));} while(0)
 
@@ -180,11 +181,60 @@ static void *lept_context_pop(lept_context *ct, size_t size)
 	return (ct->stack + (ct->top -= size));
 }
 
+const char *lept_parse_hex4(const char *p, unsigned *u)
+{
+	int i = 0;
+	*u = 0;
+
+	for (i = 0; i < 4; i++)
+	{
+		char ch = *p++;
+		*u <<= 4;
+
+		if (ch >= '0' && ch <= '9')     	*u |= (ch - '0');
+		else if (ch >= 'a' && ch <= 'f') 	*u |= (ch - 'a' + 10);
+		else if (ch >= 'A' && ch <= 'F') 	*u |= (ch - 'A' + 10);
+		else								return NULL;
+	}
+
+	return p;
+}
+
+int lept_encode_utf8(lept_context *ct, unsigned u)
+{
+	assert(u <= 0x10ffff);
+
+	if (u <= 0x7f)
+		PUTC(ct, u & 0xff);
+	else if (u >= 0x80 && u <= 0x7ff)
+	{
+		PUTC(ct, (u >> 6) | 0xc0);
+	 	PUTC(ct, (u & 0x3f) | 0x80);
+	}
+	else if (u >= 0x800 && u <= 0xffff)
+	{
+		PUTC(ct, (u >> 12) | 0xe0);
+		PUTC(ct, ((u >> 6) & 0x3f) | 0x80);
+		PUTC(ct, (u & 0x3f) | 0x80);
+	}
+	else if (u >= 0x10000 && u <= 0x10ffff)
+	{
+		PUTC(ct, ((u >> 18) & 0x7) | 0xf0);
+		PUTC(ct, ((u >> 12) & 0x3f) | 0x80);
+		PUTC(ct, ((u >> 6) & 0x3f) | 0x80);
+		PUTC(ct, (u & 0x3f) | 0x80);
+	}
+
+	return 0;
+}
+
 int lept_parse_string(lept_context *ct, lept_value *v)
 {
 	size_t head = ct->top;
 	const char *p = ct->json + 1;
 	size_t len;
+    unsigned u;
+	unsigned l;
 
 	while(1)
 	{
@@ -210,13 +260,7 @@ int lept_parse_string(lept_context *ct, lept_value *v)
 						PUTC(ct, '\\');
 						break;
 					case '/':
-						PUTC(ct, '/');
-						break;
-					case 'b':
-						PUTC(ct, '\b');
-						break;
-					case 'f':
-						PUTC(ct, '\f');
+						PUTC(ct, '/'); break; case 'b': PUTC(ct, '\b'); break; case 'f': PUTC(ct, '\f');
 						break;
 					case 'n':
 						PUTC(ct, '\n');
@@ -226,6 +270,31 @@ int lept_parse_string(lept_context *ct, lept_value *v)
 						break;
 					case 't':
 						PUTC(ct, '\t');
+						break;
+					case 'u':
+						if (!(p = lept_parse_hex4(p, &u)))
+							return LEPT_PARSE_INVALID_UNICODE_HEX;
+
+						/* TODO surrogate handing */
+						if (u >= 0xD800 && u < 0xDBFF)
+						{
+							if (*p++ != '\\' || *(p++) != 'u')
+							{
+								return LEPT_PARSE_INVALID_UNICODE_HEX;
+							}
+
+							if (!(p = lept_parse_hex4(p, &l)))
+								return LEPT_PARSE_INVALID_UNICODE_SURROGATE;
+
+							if (!(l >= 0xDC00 && l <= 0xDFFF))
+							{
+								return LEPT_PARSE_INVALID_UNICODE_SURROGATE;
+							}
+
+							u = 0x10000 + (u - 0xD800) * 0x400 + (l - 0xDC00);
+						}
+
+						lept_encode_utf8(ct, u);
 						break;
 					default:
 						ct->top = head;
