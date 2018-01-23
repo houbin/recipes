@@ -28,3 +28,7 @@
 *.app
 
 build/
+lambda
+leveldb_tool
+client
+server
