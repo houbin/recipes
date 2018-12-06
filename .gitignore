@@ -32,3 +32,4 @@ lambda
 leveldb_tool
 client
 server
+core.*

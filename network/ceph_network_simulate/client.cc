@@ -44,6 +44,7 @@ int tcp_read(int fd, char *buffer, int length)
         if (ret < 0)
             return ret;
 
+        sleep(20);
         ret = recv(fd, buffer, length, MSG_DONTWAIT);
         if (ret < 0)
         {
@@ -60,11 +61,24 @@ int tcp_read(int fd, char *buffer, int length)
 
 int main()
 {
+    int ret = 0;
     int fd = socket(AF_INET, SOCK_STREAM, 0);
     if (fd < 0)
     {
         perror("create socket error");
         return -1;
+    }
+
+    struct sockaddr_in client_addr;
+    memset(&client_addr, 0, sizeof(struct sockaddr_in));
+    client_addr.sin_family = AF_INET;
+    client_addr.sin_addr.s_addr = inet_addr("127.0.0.1");
+//client_addr.sin_port = htons(12345);
+
+    ret = bind(fd, (struct sockaddr*)&client_addr, sizeof(struct sockaddr));
+    if (ret != 0) {
+      perror("bind error");
+      return -1;
     }
 
     struct sockaddr_in addr;
@@ -73,24 +87,25 @@ int main()
     addr.sin_addr.s_addr = inet_addr("127.0.0.1");
     addr.sin_port = htons(16000);
 
-    int ret = connect(fd, (struct sockaddr*)&addr, sizeof(struct sockaddr));
+    ret = connect(fd, (struct sockaddr*)&addr, sizeof(struct sockaddr));
     if (ret < 0)
     {
         perror("connect error");
         return -1;
     }
 
-    sleep(5);
 
 #define BANNER_SIZE 12
     char buffer[BANNER_SIZE] = {0};
-    ret = tcp_read(fd, buffer, 12);
+    memset(buffer, 'a', 11);
+    ret = send(fd, buffer, 12, 0);
     if (ret < 0)
     {
         cout << "tcp_read error, ret " << ret << endl;
         return -1;
     }
     cout << "read msg " << buffer << endl;
+    sleep(100);
 
     close(fd);
 

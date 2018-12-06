@@ -8,8 +8,17 @@
 #include <stdlib.h>
 #include <errno.h>
 #include <arpa/inet.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+
 
 using namespace std;
+
+int write_log(int log_fd, const char *log, int size) {
+  write(log_fd, log, size);
+  return 0;
+}
 
 int tcp_read_wait(int fd)
 {
@@ -58,6 +67,14 @@ int tcp_read(int fd, char *buffer, int length)
 
 int main()
 {
+    string log_file("/tmp/log.file");
+    int log_fd = open(log_file.c_str(), O_RDWR|O_CREAT, 0755);
+    if (log_fd <= 0) {
+      perror("open log file error");
+      return -1;
+    }
+
+
     int fd = socket(AF_INET, SOCK_STREAM, 0);
     if (fd < 0)
     {
@@ -93,56 +110,50 @@ int main()
         return -1;
     }
 
-    struct pollfd pfd;
-    pfd.fd = fd;
-    pfd.events = POLLIN | POLLERR | POLLNVAL | POLLHUP;
-    ret = poll(&pfd, 1, -1);
-    if (ret < 0)
-    {
-        perror("poll error");
-        return -1;
+    //daemon(0, 0);
+    char log_buffer[128] = {0};
+    while (true) {
+      /*
+      struct pollfd pfd;
+      pfd.fd = fd;
+      pfd.events = POLLIN | POLLERR | POLLNVAL | POLLHUP;
+      ret = poll(&pfd, 1, -1);
+      if (ret < 0)
+      {
+          perror("poll error");
+          return -1;
+      }
+
+      if (pfd.revents & (POLLERR | POLLNVAL | POLLHUP))
+          return -1;
+      */
+
+      struct sockaddr_in client_addr;
+      memset(&client_addr, 0, sizeof(struct sockaddr_in));
+      socklen_t addr_len = sizeof(struct sockaddr);
+
+      int client_fd = accept(fd, (struct sockaddr*)&client_addr, &addr_len);
+      if (client_fd <= 0)
+      {
+          perror("accept error");
+          return -1;
+      }
+
+      char buffer[128] = {0};
+      ret = read(client_fd, buffer, 128);
+      if (ret != 12)
+      {
+          cout << "send msg error" << endl;
+          return -1;
+      }
+
+      //cout << "recv msg: " << buffer << endl;
+      string log("recv msg:");
+      log.append(buffer);
+      write_log(log_fd, log.c_str(), log.size());
+      
+      close(client_fd);
     }
-
-    if (pfd.revents & (POLLERR | POLLNVAL | POLLHUP))
-        return -1;
-
-    struct sockaddr_in client_addr;
-    memset(&client_addr, 0, sizeof(struct sockaddr_in));
-    socklen_t addr_len = sizeof(struct sockaddr);
-
-    int client_fd = accept(fd, (struct sockaddr*)&client_addr, &addr_len);
-    if (client_fd <= 0)
-    {
-        perror("accept error");
-        return -1;
-    }
-
-    cout << "client addr is " << inet_ntoa(client_addr.sin_addr) << endl;
-
-    cout << "sleep 1s, and close client_fd" << endl;
-    sleep(1);
-    ::shutdown(client_fd, SHUT_RDWR);
-    cout << "shutdown client fd, sleep 6s" << endl;
-
-    sleep(6);
-    close(client_fd);
-    cout << "after shutdown, close fd" << endl;
-    sleep(1000);
-
-    char buffer[12] = {0};
-    sprintf(buffer, "%s", "000000000000");
-    ret = send(client_fd, buffer, 12, MSG_DONTWAIT);
-    if (ret != 12)
-    {
-        cout << "send msg error" << endl;
-        return -1;
-    }
-    cout << "send msg ok" << endl;
-
-    sleep(100);
-
-    return 0;
-
 
     return 0;
 }
